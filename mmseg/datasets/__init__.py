@@ -6,6 +6,7 @@ from .cityscapes import CityscapesDataset
 from .coco_stuff import COCOStuffDataset
 from .custom import CustomDataset
 from .dark_zurich import DarkZurichDataset
+from .alertwildfire import AlertWildfire
 from .dataset_wrappers import (ConcatDataset, MultiImageMixDataset,
                                RepeatDataset)
 from .drive import DRIVEDataset
@@ -26,5 +27,5 @@ __all__ = [
     'PascalContextDataset59', 'ChaseDB1Dataset', 'DRIVEDataset', 'HRFDataset',
     'STAREDataset', 'DarkZurichDataset', 'NightDrivingDataset',
     'COCOStuffDataset', 'LoveDADataset', 'MultiImageMixDataset',
-    'iSAIDDataset', 'ISPRSDataset', 'PotsdamDataset'
+    'iSAIDDataset', 'ISPRSDataset', 'PotsdamDataset', 'AlertWildfire',
 ]

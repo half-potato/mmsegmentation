@@ -12,11 +12,11 @@ def convert_beit(ckpt):
     new_ckpt = OrderedDict()
 
     for k, v in ckpt.items():
-        if k.startswith('patch_embed'):
-            new_key = k.replace('patch_embed.proj', 'patch_embed.projection')
+        if k.startswith('backbone.patch_embed'):
+            new_key = k.replace('backbone.patch_embed.proj', 'backbone.patch_embed.projection')
             new_ckpt[new_key] = v
-        if k.startswith('blocks'):
-            new_key = k.replace('blocks', 'layers')
+        if k.startswith('backbone.blocks'):
+            new_key = k.replace('backbone.blocks', 'backbone.layers')
             if 'norm' in new_key:
                 new_key = new_key.replace('norm', 'ln')
             elif 'mlp.fc1' in new_key:

@@ -263,9 +263,22 @@ class BaseSegmentor(BaseModule, metaclass=ABCMeta):
         assert palette.shape[1] == 3
         assert len(palette.shape) == 2
         assert 0 < opacity <= 1.0
-        color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8)
+        def blend(alpha, col):
+            alpha = alpha.reshape(-1, 1).astype(np.int)
+            col = col.reshape(1, 3).astype(np.int)
+            return ((alpha * col)/255)
+        color_seg = np.zeros((seg.shape[1], seg.shape[2], 3), dtype=np.uint8)
         for label, color in enumerate(palette):
-            color_seg[seg == label, :] = color
+            color = color.astype(np.uint8)
+            if self.handle_opacity:
+                col1 = seg[0] == label
+                col2 = seg[1] == label
+                alpha1 = seg[2, col1]
+                alpha2 = 255 - seg[2, col2]
+                color_seg[col1, :] = (color_seg[col1, :].astype(np.int) + blend(alpha1, color)).clip(0, 255).astype(np.uint8)
+                color_seg[col2, :] = (color_seg[col2, :].astype(np.int) + blend(alpha2, color)).clip(0, 255).astype(np.uint8)
+            else:
+                color_seg[seg == label, :] = color
         # convert to BGR
         color_seg = color_seg[..., ::-1]
 

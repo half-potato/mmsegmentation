@@ -27,8 +27,10 @@ class EncoderDecoder(BaseSegmentor):
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None,
-                 init_cfg=None):
+                 init_cfg=None,
+                 handle_opacity=True):
         super(EncoderDecoder, self).__init__(init_cfg)
+        self.handle_opacity = handle_opacity
         if pretrained is not None:
             assert backbone.get('pretrained') is None, \
                 'both backbone and segmentor set pretrained weight'
@@ -254,12 +256,22 @@ class EncoderDecoder(BaseSegmentor):
     def simple_test(self, img, img_meta, rescale=True):
         """Simple test with single image."""
         seg_logit = self.inference(img, img_meta, rescale)
-        seg_pred = seg_logit.argmax(dim=1)
+        if self.handle_opacity:
+            seg_pred1 = seg_logit.argmax(dim=1, keepdim=True)
+            seg_log1 = torch.gather(seg_logit, 1, seg_pred1)
+            seg_logit = torch.scatter(seg_logit, 1, seg_pred1, 0)
+            seg_pred2 = seg_logit.argmax(dim=1, keepdim=True)
+            seg_log2 = torch.gather(seg_logit, 1, seg_pred2)
+            alpha = (seg_log2/(seg_log1+seg_log2) * 255).clip(0, 255).byte()
+
+            seg_pred = torch.cat((seg_pred1, seg_pred2, alpha), dim=1).byte().cpu()
+        else:
+            seg_pred = seg_logit.argmax(dim=1).cpu()
         if torch.onnx.is_in_onnx_export():
             # our inference backend only support 4D output
             seg_pred = seg_pred.unsqueeze(0)
             return seg_pred
-        seg_pred = seg_pred.cpu().numpy()
+        seg_pred = seg_pred.numpy()
         # unravel batch dim
         seg_pred = list(seg_pred)
         return seg_pred
