@@ -58,13 +58,22 @@ class AlertWildfire(CustomDataset):
     # old
     #CLASSES = ['other', 'mechanical', 'furniture', 'products', 'foods', 'environ', 'clouds', 'fog', 'sky-other', 'skyscraper', 'snow', 'waterdrops', 'smoke']
     CLASSES = ['other', 'buildings', 'water', 'terrain',
-               'vegetation', 'clouds', 'fog', 'sky-other',
-               'snow', 'smoke']
+               'vegetation', 'snow', 
+               'sky-other', 'clouds', 'smoke']
 
 
     PALETTE = [[0, 0, 0], [120, 120, 120], [0, 0, 0], [124, 42, 42],
-               [4, 200, 3], [255, 255, 255], [255, 255, 255], [100, 5, 255],
-               [120, 120, 120], [255, 0, 0]]
+               [4, 200, 3], [0, 0, 0],
+               [100, 5, 255], [0, 0, 255], [255, 0, 0]]
+    INCOMPATIBILITY = [
+        ('water', 'buildings'),
+        ('water', 'terrain'),
+        ('water', 'snow'),
+        ('water', 'vegetation'),
+        ('terrain', 'buildings'),
+        ('vegetation', 'buildings'),
+        ('clouds', 'smoke'),
+    ]
     # PALETTE = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0],
     #            [0, 0, 0], [255, 255, 255], [255, 255, 255], [0, 0, 0],
     #            [0, 0, 0], [255, 0, 0]]#, [224, 5, 255], [235, 255, 7],
@@ -73,7 +82,7 @@ class AlertWildfire(CustomDataset):
     def __init__(self, **kwargs):
         super(AlertWildfire, self).__init__(
             img_suffix='.jpg',
-            reduce_zero_label=True,
+            reduce_zero_label=False,
             **kwargs)
 
     def results2img(self, results, imgfile_prefix, to_label_id):
@@ -106,7 +115,7 @@ class AlertWildfire(CustomDataset):
             # The  index range of official requirement is from 0 to 150.
             # But the index range of output is from 0 to 149.
             # That is because we set reduce_zero_label=True.
-            result = result + 1
+            # result = result + 1
 
             output = Image.fromarray(result.astype(np.uint8))
             output.save(png_filename)

@@ -115,6 +115,9 @@ def single_gpu_test(model,
                     show=show,
                     out_file=out_file,
                     opacity=opacity)
+        for i in range(len(result)):
+            if len(result[i].shape) == 3:
+                result[i] = result[i][0]
 
         if efficient_test:
             result = [np2tmp(_, tmpdir='.efficient_test') for _ in result]

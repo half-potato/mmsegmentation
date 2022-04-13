@@ -130,9 +130,12 @@ class LoadAnnotations(object):
         else:
             filename = results['ann_info']['seg_map']
         img_bytes = self.file_client.get(filename)
-        gt_semantic_seg = mmcv.imfrombytes(
-            img_bytes, flag='unchanged',
-            backend=self.imdecode_backend).squeeze().astype(np.uint8)
+        try:
+            gt_semantic_seg = mmcv.imfrombytes(
+                img_bytes, flag='unchanged',
+                backend=self.imdecode_backend).squeeze().astype(np.uint8)
+        except:
+            raise Exception(f"Failed to read image {filename}")
         # modify if custom classes
         if results.get('label_map', None) is not None:
             for old_id, new_id in results['label_map'].items():
