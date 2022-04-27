@@ -9,6 +9,7 @@ import torch
 from mmcv.engine import collect_results_cpu, collect_results_gpu
 from mmcv.image import tensor2imgs
 from mmcv.runner import get_dist_info
+from pathlib import Path
 
 
 def np2tmp(array, temp_file_name=None, tmpdir=None):
@@ -38,6 +39,7 @@ def single_gpu_test(model,
                     efficient_test=False,
                     opacity=0.5,
                     pre_eval=False,
+                    store_raw=False,
                     format_only=False,
                     format_args={}):
     """Test with single GPU by progressive mode.
@@ -104,7 +106,10 @@ def single_gpu_test(model,
                 img_show = mmcv.imresize(img_show, (ori_w, ori_h))
 
                 if out_dir:
-                    out_file = osp.join(out_dir, img_meta['ori_filename'])
+                    if store_raw:
+                        out_file = osp.join(out_dir, str(Path(img_meta['ori_filename']).with_suffix('.png')))
+                    else:
+                        out_file = osp.join(out_dir, img_meta['ori_filename'])
                 else:
                     out_file = None
 
@@ -112,12 +117,14 @@ def single_gpu_test(model,
                     img_show,
                     result,
                     palette=dataset.PALETTE,
+                    store_raw=store_raw,
                     show=show,
                     out_file=out_file,
                     opacity=opacity)
         for i in range(len(result)):
             if len(result[i].shape) == 3:
-                result[i] = result[i][0]
+                # print(np.unique(result[i][0]), np.unique(result[i][1]), np.max(result[i][2]))
+                result[i] = np.where(result[i][2] > 128, result[i][0], result[i][1])
 
         if efficient_test:
             result = [np2tmp(_, tmpdir='.efficient_test') for _ in result]

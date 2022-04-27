@@ -1,6 +1,7 @@
 # dataset settings
 dataset_type = 'AlertWildfire'
 data_root = 'data/alertwildfire'
+coco_root = 'data/coco_stuff164k'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 crop_size = (640, 640)
@@ -37,14 +38,26 @@ test_pipeline = [
 data = dict(
     samples_per_gpu=4,
     workers_per_gpu=4,
-    train=dict(
-        type=dataset_type,
-        data_root=data_root,
-        img_dir='images',
-        ann_dir='annotations',
-        split='train.lst',
-        seg_map_suffix='.png',
-        pipeline=train_pipeline),
+    train=[
+        dict(
+            type=dataset_type,
+            data_root=data_root,
+            img_dir='images',
+            ann_dir='teacher_annotations',
+            split='train.lst',
+            seg_map_suffix='.png',
+            pipeline=train_pipeline,
+        ),
+        dict(
+            type=dataset_type,
+            data_root=coco_root,
+            img_dir='images/train2017',
+            ann_dir='teacher_annotations/train2017',
+            split='train.lst',
+            seg_map_suffix='.png',
+            pipeline=train_pipeline,
+        )
+    ],
     val=dict(
         type=dataset_type,
         data_root=data_root,
@@ -54,11 +67,24 @@ data = dict(
         split='val.lst',
         pipeline=test_pipeline),
     test=dict(
-        type=dataset_type,
-        data_root=data_root,
-        #img_dir='images/validation',
-        img_dir='images',
-        ann_dir='annotations',
-        split='all.lst',
-        pipeline=test_pipeline))
+            type=dataset_type,
+            data_root=data_root,
+            #img_dir='images/validation',
+            img_dir='images',
+            ann_dir='annotations',
+            split='val.lst',
+            pipeline=test_pipeline
+        )
+    # test=dict(
+    #     dict(
+    #         type=dataset_type,
+    #         data_root=coco_root,
+    #         img_dir='images/train2017',
+    #         ann_dir='compressed_annotations/train2017',
+    #         split='train.lst',
+    #         seg_map_suffix='_labelTrainIds.png',
+    #         pipeline=test_pipeline,
+    #     )
+    # )
+)
 

@@ -69,6 +69,7 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
                  ignore_index=255,
                  sampler=None,
                  align_corners=False,
+                 handle_opacity=False,
                  init_cfg=dict(
                      type='Normal', std=0.01, override=dict(name='conv_seg'))):
         super(BaseDecodeHead, self).__init__(init_cfg)
@@ -83,6 +84,7 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
 
         self.ignore_index = ignore_index
         self.align_corners = align_corners
+        self.handle_opacity = handle_opacity
 
         if isinstance(loss_decode, dict):
             self.loss_decode = build_loss(loss_decode)
@@ -234,7 +236,7 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
         loss = dict()
         seg_logit = resize(
             input=seg_logit,
-            size=seg_label.shape[2:],
+            size=seg_label.shape[2:4],
             mode='bilinear',
             align_corners=self.align_corners)
         if self.sampler is not None:
@@ -261,6 +263,9 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
                     weight=seg_weight,
                     ignore_index=self.ignore_index)
 
-        loss['acc_seg'] = accuracy(
-            seg_logit, seg_label, ignore_index=self.ignore_index)
+        if self.handle_opacity:
+            label = torch.where(seg_label[..., 2] > 128, seg_label[..., 0], seg_label[..., 1])
+        else:
+            label = seg_label
+        loss['acc_seg'] = accuracy(seg_logit, label, ignore_index=self.ignore_index)
         return loss

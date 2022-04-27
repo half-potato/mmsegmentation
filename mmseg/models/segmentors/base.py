@@ -217,6 +217,7 @@ class BaseSegmentor(BaseModule, metaclass=ABCMeta):
                     show=False,
                     wait_time=0,
                     out_file=None,
+                    store_raw=False,
                     opacity=0.5):
         """Draw `result` over `img`.
 
@@ -291,7 +292,12 @@ class BaseSegmentor(BaseModule, metaclass=ABCMeta):
         if show:
             mmcv.imshow(img, win_name, wait_time)
         if out_file is not None:
-            mmcv.imwrite(img, out_file)
+            if store_raw:
+                if len(seg.shape) == 3:
+                    seg = np.rollaxis(seg, 0, 3)
+                mmcv.imwrite(seg, out_file)
+            else:
+                mmcv.imwrite(img, out_file)
 
         if not (show or out_file):
             warnings.warn('show==False and out_file is not specified, only '

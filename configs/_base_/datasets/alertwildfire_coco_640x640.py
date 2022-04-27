@@ -67,11 +67,24 @@ data = dict(
         split='val.lst',
         pipeline=test_pipeline),
     test=dict(
-        type=dataset_type,
-        data_root=data_root,
-        #img_dir='images/validation',
-        img_dir='images',
-        ann_dir='annotations',
-        split='val.lst',
-        pipeline=test_pipeline))
+            type=dataset_type,
+            data_root=data_root,
+            #img_dir='images/validation',
+            img_dir='images',
+            ann_dir='annotations',
+            split='val.lst',
+            pipeline=test_pipeline
+        )
+    # test=dict(
+    #     dict(
+    #         type=dataset_type,
+    #         data_root=coco_root,
+    #         img_dir='images/train2017',
+    #         ann_dir='compressed_annotations/train2017',
+    #         split='train.lst',
+    #         seg_map_suffix='_labelTrainIds.png',
+    #         pipeline=test_pipeline,
+    #     )
+    # )
+)
 

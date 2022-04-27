@@ -242,7 +242,6 @@ class EncoderDecoder(BaseSegmentor):
         else:
             seg_logit = self.whole_inference(img, img_meta, rescale)
         if softmax:
-            seg_logit = seg_logit[:, :9]
             output = F.softmax(seg_logit, dim=1)
         else:
             output = seg_logit
@@ -261,22 +260,27 @@ class EncoderDecoder(BaseSegmentor):
         """Simple test with single image."""
         seg_prob = self.inference(img, img_meta, rescale)
         if self.handle_opacity:
-            back_ind = 7
-            back_prob = seg_prob[:, :back_ind]
-            fore_prob = seg_prob[:, back_ind:]
-            back_pred = back_prob.argmax(dim=1, keepdim=True)
-            fore_pred = fore_prob.argmax(dim=1, keepdim=True)+back_ind
-            alpha_v = fore_prob.sum(dim=1, keepdim=True)
-            # fore_prob_v = fore_prob.max(dim=1, keepdim=True).values
-            # back_prob_v = back_prob.max(dim=1, keepdim=True).values
-            # alpha_v = fore_prob_v / (fore_prob_v + back_prob_v)
-
-            # fore_pred = seg_prob.argmax(dim=1, keepdim=True)
-            # seg_prob1 = torch.gather(seg_prob, 1, fore_pred)
-            # seg_prob = torch.scatter(seg_prob, 1, fore_pred, 0)
-            # back_pred = seg_prob.argmax(dim=1, keepdim=True)
-            # seg_prob2 = torch.gather(seg_prob, 1, back_pred)
-            # alpha_v = seg_prob1/(seg_prob1+seg_prob2)
+            # seg_prob = seg_prob[:, 1:]
+            # print(seg_prob.shape)
+            method = 'density'
+            # method = 'prob'
+            if method == 'density':
+                back_ind = 7
+                back_prob = seg_prob[:, :back_ind]
+                fore_prob = seg_prob[:, back_ind:]
+                back_pred = back_prob.argmax(dim=1, keepdim=True)
+                fore_pred = fore_prob.argmax(dim=1, keepdim=True)+back_ind
+                alpha_v = fore_prob.sum(dim=1, keepdim=True)
+                # fore_prob_v = fore_prob.max(dim=1, keepdim=True).values
+                # back_prob_v = back_prob.max(dim=1, keepdim=True).values
+                # alpha_v = fore_prob_v / (fore_prob_v + back_prob_v)
+            else:
+                fore_pred = seg_prob.argmax(dim=1, keepdim=True)
+                seg_prob1 = torch.gather(seg_prob, 1, fore_pred)
+                seg_prob = torch.scatter(seg_prob, 1, fore_pred, 0)
+                back_pred = seg_prob.argmax(dim=1, keepdim=True)
+                seg_prob2 = torch.gather(seg_prob, 1, back_pred)
+                alpha_v = seg_prob1/(seg_prob1+seg_prob2)
 
             alpha = (alpha_v * 255).clip(0, 255).byte()
 

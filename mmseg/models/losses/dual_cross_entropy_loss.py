@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from ..builder import LOSSES
 from .utils import get_class_weight, weight_reduce_loss
 
+import cv2
 
 def cross_entropy(pred,
                   label,
@@ -86,63 +87,6 @@ def _expand_onehot_labels(labels, label_weights, target_shape, ignore_index):
     return bin_labels, bin_label_weights, valid_mask
 
 
-def binary_cross_entropy(pred,
-                         label,
-                         weight=None,
-                         reduction='mean',
-                         avg_factor=None,
-                         class_weight=None,
-                         ignore_index=-100,
-                         avg_non_ignore=False,
-                         **kwargs):
-    """Calculate the binary CrossEntropy loss.
-
-    Args:
-        pred (torch.Tensor): The prediction with shape (N, 1).
-        label (torch.Tensor): The learning label of the prediction.
-            Note: In bce loss, label < 0 is invalid.
-        weight (torch.Tensor, optional): Sample-wise loss weight.
-        reduction (str, optional): The method used to reduce the loss.
-            Options are "none", "mean" and "sum".
-        avg_factor (int, optional): Average factor that is used to average
-            the loss. Defaults to None.
-        class_weight (list[float], optional): The weight for each class.
-        ignore_index (int): The label index to be ignored. Default: -100.
-        avg_non_ignore (bool): The flag decides to whether the loss is
-            only averaged over non-ignored targets. Default: False.
-            `New in version 0.23.0.`
-
-    Returns:
-        torch.Tensor: The calculated loss
-    """
-    if pred.dim() != label.dim():
-        assert (pred.dim() == 2 and label.dim() == 1) or (
-                pred.dim() == 4 and label.dim() == 3), \
-            'Only pred shape [N, C], label shape [N] or pred shape [N, C, ' \
-            'H, W], label shape [N, H, W] are supported'
-        # `weight` returned from `_expand_onehot_labels`
-        # has been treated for valid (non-ignore) pixels
-        label, weight, valid_mask = _expand_onehot_labels(
-            label, weight, pred.shape, ignore_index)
-    else:
-        # should mask out the ignored elements
-        valid_mask = ((label >= 0) & (label != ignore_index)).float()
-        if weight is not None:
-            weight *= valid_mask
-        else:
-            weight = valid_mask
-    # average loss over non-ignored and valid elements
-    if reduction == 'mean' and avg_factor is None and avg_non_ignore:
-        avg_factor = valid_mask.sum().item()
-
-    loss = F.binary_cross_entropy_with_logits(
-        pred, label.float(), pos_weight=class_weight, reduction='none')
-    # do the reduction for the weighted loss
-    loss = weight_reduce_loss(
-        loss, weight, reduction=reduction, avg_factor=avg_factor)
-
-    return loss
-
 
 def mask_cross_entropy(pred,
                        target,
@@ -184,7 +128,7 @@ def mask_cross_entropy(pred,
 
 
 @LOSSES.register_module()
-class CrossEntropyLoss(nn.Module):
+class DualCrossEntropyLoss(nn.Module):
     """CrossEntropyLoss.
 
     Args:
@@ -206,17 +150,15 @@ class CrossEntropyLoss(nn.Module):
     """
 
     def __init__(self,
-                 use_sigmoid=False,
                  use_mask=False,
                  reduction='mean',
                  class_weight=None,
                  loss_weight=1.0,
-                 loss_name='loss_ce',
+                 loss_name='loss_dual_ce',
                  avg_non_ignore=False):
-        super(CrossEntropyLoss, self).__init__()
-        assert (use_sigmoid is False) or (use_mask is False)
-        self.use_sigmoid = use_sigmoid
-        self.use_mask = use_mask
+        super(DualCrossEntropyLoss, self).__init__()
+        if use_mask:
+            raise Exception('DualCrossEntropyLoss does not support mask loss. Yet.')
         self.reduction = reduction
         self.loss_weight = loss_weight
         self.class_weight = get_class_weight(class_weight)
@@ -228,12 +170,7 @@ class CrossEntropyLoss(nn.Module):
                 'labels, which is the same with PyTorch official '
                 'cross_entropy, set ``avg_non_ignore=True``.')
 
-        if self.use_sigmoid:
-            self.cls_criterion = binary_cross_entropy
-        elif self.use_mask:
-            self.cls_criterion = mask_cross_entropy
-        else:
-            self.cls_criterion = cross_entropy
+        # self.cls_criterion = cross_entropy
         self._loss_name = loss_name
 
     def extra_repr(self):
@@ -258,17 +195,30 @@ class CrossEntropyLoss(nn.Module):
         else:
             class_weight = None
         # Note: for BCE loss, label < 0 is invalid.
-        print(torch.unique(label), cls_score.shape)
-        loss_cls = self.loss_weight * self.cls_criterion(
+
+        target = torch.zeros_like(cls_score)
+        mask = label[..., 0] == ignore_index
+        fg_lab = label[..., 0]
+        bg_lab = label[..., 1]
+        # mask |= fg_lab == -1
+        # mask2 = bg_lab == -1
+        opacity = label[..., 2].float() / 255
+        fg_lab[mask] = 0
+        # bg_lab[mask2] = 0
+        opacity[mask] = 0
+        target = torch.scatter(target, 1, fg_lab.unsqueeze(1), opacity.unsqueeze(1))
+        target = torch.scatter(target, 1, bg_lab.unsqueeze(1), 1-opacity.unsqueeze(1))
+
+        loss = F.cross_entropy(
             cls_score,
-            label,
-            weight,
-            class_weight=class_weight,
-            reduction=reduction,
-            avg_factor=avg_factor,
-            avg_non_ignore=self.avg_non_ignore,
-            ignore_index=ignore_index,
-            **kwargs)
+            target,
+            # comb_lab.squeeze(),
+            weight=class_weight,
+            # ignore_index=ignore_index,
+            reduction=reduction)
+
+        loss_cls = self.loss_weight * loss
+
         return loss_cls
 
     @property
@@ -285,3 +235,4 @@ class CrossEntropyLoss(nn.Module):
             str: The name of this loss item.
         """
         return self._loss_name
+

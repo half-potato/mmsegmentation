@@ -2,6 +2,7 @@
 from .accuracy import Accuracy, accuracy
 from .cross_entropy_loss import (CrossEntropyLoss, binary_cross_entropy,
                                  cross_entropy, mask_cross_entropy)
+from .dual_cross_entropy_loss import DualCrossEntropyLoss
 from .dice_loss import DiceLoss
 from .focal_loss import FocalLoss
 from .lovasz_loss import LovaszLoss

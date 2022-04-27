@@ -32,6 +32,8 @@ def parse_args():
               'into the directory as json'))
     parser.add_argument(
         '--aug-test', action='store_true', help='Use Flip and Multi scale aug')
+    parser.add_argument(
+        '--store_raw', action='store_true', help='Store raw segmentation result')
     parser.add_argument('--out', help='output result file in pickle format')
     parser.add_argument(
         '--format-only',
@@ -277,6 +279,7 @@ def main():
             args.show_dir,
             False,
             args.opacity,
+            store_raw=args.store_raw,
             pre_eval=args.eval is not None and not eval_on_format_results,
             format_only=args.format_only or eval_on_format_results,
             format_args=eval_kwargs)

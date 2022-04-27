@@ -13,6 +13,8 @@ from mmseg.core import eval_metrics, intersect_and_union, pre_eval_to_metrics
 from mmseg.utils import get_root_logger
 from .builder import DATASETS
 from .pipelines import Compose, LoadAnnotations
+import torch
+import numpy as np
 
 
 @DATASETS.register_module()
@@ -90,6 +92,7 @@ class CustomDataset(Dataset):
                  reduce_zero_label=False,
                  classes=None,
                  palette=None,
+                 handle_opacity=False,
                  gt_seg_map_loader_cfg=None,
                  file_client_args=dict(backend='disk')):
         self.pipeline = Compose(pipeline)
@@ -103,6 +106,7 @@ class CustomDataset(Dataset):
         self.ignore_index = ignore_index
         self.reduce_zero_label = reduce_zero_label
         self.label_map = None
+        self.handle_opacity = handle_opacity
         self.CLASSES, self.PALETTE = self.get_classes_and_palette(
             classes, palette)
         self.gt_seg_map_loader = LoadAnnotations(
@@ -297,10 +301,14 @@ class CustomDataset(Dataset):
 
         for pred, index in zip(preds, indices):
             seg_map = self.get_gt_seg_map_by_idx(index)
+            if self.handle_opacity:
+                label = np.where(seg_map[..., 2] > 128, seg_map[..., 0], seg_map[..., 1])
+            else:
+                label = seg_map
             pre_eval_results.append(
                 intersect_and_union(
                     pred,
-                    seg_map,
+                    label,
                     len(self.CLASSES),
                     self.ignore_index,
                     # as the labels has been converted when dataset initialized
